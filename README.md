@@ -12,7 +12,7 @@ ii) Member Lookup
 iii) Schedule view
 For Admin,
 i) Room Booking
-ii) Claas Management
+ii) Class Management
 iii) Billing & Payment
 
 Schema has following entities,
