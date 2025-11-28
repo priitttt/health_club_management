@@ -20,7 +20,7 @@ public class AdminDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(admin);
+            session.persist(admin);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -31,7 +31,7 @@ public class AdminDAO {
     // Read: get admin by id
     public Admin getAdminById(Long adminId) {
         try (Session session = sessionFactory.openSession()) {
-            return session.get(Admin.class, adminId);
+            return session.find(Admin.class, adminId);
         }
     }
 
@@ -63,7 +63,7 @@ public class AdminDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.update(admin);
+            session.merge(admin);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -76,7 +76,7 @@ public class AdminDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(admin);
+            session.remove(admin);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();

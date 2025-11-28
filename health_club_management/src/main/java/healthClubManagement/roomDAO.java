@@ -20,7 +20,7 @@ public class RoomDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(room);
+            session.persist(room);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -31,7 +31,7 @@ public class RoomDAO {
     // Read: get room by id
     public Room getRoomById(Long roomId) {
         try (Session session = sessionFactory.openSession()) {
-            return session.get(Room.class, roomId);
+            return session.find(Room.class, roomId);
         }
     }
 
@@ -62,7 +62,7 @@ public class RoomDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.update(room);
+            session.merge(room);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -75,7 +75,7 @@ public class RoomDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(room);
+            session.remove(room);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();

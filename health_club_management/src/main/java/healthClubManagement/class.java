@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "Class")
-public class ClassEntity {
+public class Class {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,10 +30,10 @@ public class ClassEntity {
     @Column(name = "schedule", nullable = false)
     private LocalDateTime schedule;
 
-    public ClassEntity() {
+    public Class() {
     }
 
-    public ClassEntity(Trainer trainer,
+    public Class(Trainer trainer,
                        Room room,
                        String name,
                        int capacity,

@@ -22,7 +22,7 @@ public class AvailabilityDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(availability);
+            session.persist(availability);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -33,7 +33,7 @@ public class AvailabilityDAO {
     // Read: get by id
     public Availability getAvailabilityById(Long id) {
         try (Session session = sessionFactory.openSession()) {
-            return session.get(Availability.class, id);
+            return session.find(Availability.class, id);
         }
     }
 
@@ -89,7 +89,7 @@ public class AvailabilityDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.update(availability);
+            session.merge(availability);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -102,7 +102,7 @@ public class AvailabilityDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(availability);
+            session.remove(availability);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();

@@ -16,11 +16,11 @@ public class ClassDAO {
     }
 
     // Create: add a new class
-    public void createClass(ClassEntity gymClass) {
+    public void createClass(Class gymClass) {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(gymClass);
+            session.persist(gymClass);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -29,29 +29,29 @@ public class ClassDAO {
     }
 
     // Read: get class by id
-    public ClassEntity getClassById(Long classId) {
+    public Class getClassById(Long classId) {
         try (Session session = sessionFactory.openSession()) {
-            return session.get(ClassEntity.class, classId);
+            return session.find(Class.class, classId);
         }
     }
 
     // Read: get all classes (for listing / dropdowns)
-    public List<ClassEntity> getAllClasses() {
+    public List<Class> getAllClasses() {
         try (Session session = sessionFactory.openSession()) {
-            Query<ClassEntity> query = session.createQuery(
-                    "FROM ClassEntity",
-                    ClassEntity.class
+            Query<Class> query = session.createQuery(
+                    "FROM Class",
+                    Class.class
             );
             return query.getResultList();
         }
     }
 
     // Read: get classes taught by a specific trainer
-    public List<ClassEntity> getClassesByTrainer(Trainer trainer) {
+    public List<Class> getClassesByTrainer(Trainer trainer) {
         try (Session session = sessionFactory.openSession()) {
-            Query<ClassEntity> query = session.createQuery(
-                    "FROM ClassEntity c WHERE c.trainer = :trainer",
-                    ClassEntity.class
+            Query<Class> query = session.createQuery(
+                    "FROM Class c WHERE c.trainer = :trainer",
+                    Class.class
             );
             query.setParameter("trainer", trainer);
             return query.getResultList();
@@ -59,11 +59,11 @@ public class ClassDAO {
     }
 
     // Read: get classes in a specific room
-    public List<ClassEntity> getClassesByRoom(Room room) {
+    public List<Class> getClassesByRoom(Room room) {
         try (Session session = sessionFactory.openSession()) {
-            Query<ClassEntity> query = session.createQuery(
-                    "FROM ClassEntity c WHERE c.room = :room",
-                    ClassEntity.class
+            Query<Class> query = session.createQuery(
+                    "FROM Class c WHERE c.room = :room",
+                    Class.class
             );
             query.setParameter("room", room);
             return query.getResultList();
@@ -71,11 +71,11 @@ public class ClassDAO {
     }
 
     // Update: edit class details
-    public void updateClass(ClassEntity gymClass) {
+    public void updateClass(Class gymClass) {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.update(gymClass);
+            session.merge(gymClass);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -84,11 +84,11 @@ public class ClassDAO {
     }
 
     // Delete: remove a class
-    public void deleteClass(ClassEntity gymClass) {
+    public void deleteClass(Class gymClass) {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(gymClass);
+            session.remove(gymClass);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();

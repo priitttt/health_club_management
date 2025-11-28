@@ -20,7 +20,7 @@ public class HealthMetricDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(healthMetric);
+            session.persist(healthMetric);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -54,7 +54,7 @@ public class HealthMetricDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(healthMetric);
+            session.remove(healthMetric);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();

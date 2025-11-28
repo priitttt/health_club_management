@@ -20,7 +20,7 @@ public class FitnessGoalDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(fitnessGoal);
+            session.persist(fitnessGoal);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -31,7 +31,7 @@ public class FitnessGoalDAO {
     // Read: get one goal by id
     public FitnessGoal getFitnessGoalById(Long id) {
         try (Session session = sessionFactory.openSession()) {
-            return session.get(FitnessGoal.class, id);
+            return session.find(FitnessGoal.class, id);
         }
     }
 
@@ -39,7 +39,7 @@ public class FitnessGoalDAO {
     public List<FitnessGoal> getFitnessGoalsByMember(Member member) {
         try (Session session = sessionFactory.openSession()) {
             Query<FitnessGoal> query = session.createQuery(
-                    "FROM FitnessGoal fg WHERE fg.member = :member",
+                    "FROM FitnessGoal  WHERE Member = :member",
                     FitnessGoal.class
             );
             query.setParameter("member", member);
@@ -52,7 +52,7 @@ public class FitnessGoalDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.update(fitnessGoal);
+            session.merge(fitnessGoal);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -65,7 +65,7 @@ public class FitnessGoalDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(fitnessGoal);
+            session.remove(fitnessGoal);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();

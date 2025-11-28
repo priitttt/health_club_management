@@ -5,6 +5,8 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
+import java.util.List;
+
 public class MemberDAO {
 
     private final SessionFactory sessionFactory;
@@ -18,7 +20,7 @@ public class MemberDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(member); // INSERT
+            session.persist(member); // INSERT
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -29,7 +31,7 @@ public class MemberDAO {
     // Read (SELECT by ID)
     public Member getMemberById(Long id) {
         try (Session session = sessionFactory.openSession()) {
-            return session.get(Member.class, id); // SELECT by PK
+            return session.find(Member.class, id); // SELECT by PK
         }
     }
 
@@ -43,12 +45,25 @@ public class MemberDAO {
         }
     }
 
+    // Read: get all member-class registrations
+    public List<Member> getAllMembers() {
+        try (Session session = sessionFactory.openSession()) {
+            Query<Member> query = session.createQuery(
+                    "FROM Member",
+                    Member.class
+            );
+            return query.getResultList();
+        }
+    }
+
+
+
     // Update
     public void updateMember(Member member) {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.update(member); // UPDATE
+            session.merge(member); // UPDATE
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -61,7 +76,7 @@ public class MemberDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(member); // DELETE
+            session.remove(member); // DELETE
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();

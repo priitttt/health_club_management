@@ -5,7 +5,7 @@ import jakarta.persistence.Entity;
 @Entity
 @Table(Name = "FitnessGoal")
 
-public class fitnessGoal {
+public class FitnessGoal {
     package healthClubManagement;
 
 import jakarta.persistence.*;

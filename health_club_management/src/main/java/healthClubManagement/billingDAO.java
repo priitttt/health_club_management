@@ -21,7 +21,7 @@ public class BillingDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(billing);
+            session.persist(billing);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -32,7 +32,7 @@ public class BillingDAO {
     // Read: get bill by id
     public Billing getBillingById(Long billId) {
         try (Session session = sessionFactory.openSession()) {
-            return session.get(Billing.class, billId);
+            return session.find(Billing.class, billId);
         }
     }
 
@@ -78,7 +78,7 @@ public class BillingDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.update(billing);
+            session.merge(billing);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -91,7 +91,7 @@ public class BillingDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(billing);
+            session.remove(billing);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();

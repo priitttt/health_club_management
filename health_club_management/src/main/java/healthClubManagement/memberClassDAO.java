@@ -20,7 +20,7 @@ public class MemberClassDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(memberClass);
+            session.persist(memberClass);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -29,7 +29,7 @@ public class MemberClassDAO {
     }
 
     // Read: get one MemberClass by composite key (member + class)
-    public MemberClass getMemberClass(Member member, ClassEntity gymClass) {
+    public MemberClass getMemberClass(Member member, Class gymClass) {
         try (Session session = sessionFactory.openSession()) {
             Query<MemberClass> query = session.createQuery(
                     "FROM MemberClass mc WHERE mc.member = :member AND mc.gymClass = :gymClass",
@@ -54,7 +54,7 @@ public class MemberClassDAO {
     }
 
     // Read: all registrations for a given class (who is in a class)
-    public List<MemberClass> getMemberClassesByClass(ClassEntity gymClass) {
+    public List<MemberClass> getMemberClassesByClass(Class gymClass) {
         try (Session session = sessionFactory.openSession()) {
             Query<MemberClass> query = session.createQuery(
                     "FROM MemberClass mc WHERE mc.gymClass = :gymClass",
@@ -70,7 +70,7 @@ public class MemberClassDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(memberClass);
+            session.remove(memberClass);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -79,7 +79,7 @@ public class MemberClassDAO {
     }
 
     // Convenience: unregister by member + class
-    public void deleteMemberClass(Member member, ClassEntity gymClass) {
+    public void deleteMemberClass(Member member, Class gymClass) {
         MemberClass mc = getMemberClass(member, gymClass);
         if (mc != null) {
             deleteMemberClass(mc);

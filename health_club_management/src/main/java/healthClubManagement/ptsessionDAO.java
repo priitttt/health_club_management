@@ -21,7 +21,7 @@ public class PTSessionDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(sessionEntity);
+            session.persist(sessionEntity);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -32,7 +32,7 @@ public class PTSessionDAO {
     // Read: get session by id
     public PTSession getSessionById(Long sessionId) {
         try (Session session = sessionFactory.openSession()) {
-            return session.get(PTSession.class, sessionId);
+            return session.find(PTSession.class, sessionId);
         }
     }
 
@@ -103,7 +103,7 @@ public class PTSessionDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.update(sessionEntity);
+            session.merge(sessionEntity);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -116,7 +116,7 @@ public class PTSessionDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(sessionEntity);
+            session.remove(sessionEntity);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();

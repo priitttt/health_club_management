@@ -1,10 +1,12 @@
 package healthClubManagement;
+import jakarta.persistence.*;
 
-import jakarta.persistence.Entity;
+
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "Member")
-public class Member {
+class Member {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,6 +30,8 @@ public class Member {
 
     @Column(name = "phone_number", nullable = false)
     private String phoneNumber;
+
+
 
     public Long getMemberId() {
         return memberId;

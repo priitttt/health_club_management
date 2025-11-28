@@ -20,7 +20,7 @@ public class TrainerDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.save(trainer);
+            session.persist(trainer);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -31,7 +31,7 @@ public class TrainerDAO {
     // Read: get trainer by id
     public Trainer getTrainerById(Long id) {
         try (Session session = sessionFactory.openSession()) {
-            return session.get(Trainer.class, id);
+            return session.find(Trainer.class, id);
         }
     }
 
@@ -63,7 +63,7 @@ public class TrainerDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.update(trainer);
+            session.merge(trainer);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
@@ -76,7 +76,7 @@ public class TrainerDAO {
         Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.delete(trainer);
+            session.remove(trainer);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) tx.rollback();
