@@ -17,7 +17,7 @@
         <property name="hibernate.format_sql">true</property>
 
         <!-- Map all annotated entity classes -->
-        <mapping class="healthClubManagement.Member"/>
+        <mapping class="healthClubManagement.db.Member"/>
         <mapping class="healthClubManagement.db.Trainer"/>
         <mapping class="healthClubManagement.db.Admin"/>
         <mapping class="healthClubManagement.db.Class"/>
