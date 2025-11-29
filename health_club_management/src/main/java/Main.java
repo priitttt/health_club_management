@@ -1,5 +1,3 @@
-
-
 import com.formdev.flatlaf.FlatLightLaf;
 import javax.swing.*;
 import healthClubManagement.gui.LoginFrame;

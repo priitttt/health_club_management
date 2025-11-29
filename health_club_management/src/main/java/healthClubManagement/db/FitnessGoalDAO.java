@@ -1,6 +1,5 @@
 package healthClubManagement.db;
 
-import healthClubManagement.db.Member;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -40,7 +39,7 @@ public class FitnessGoalDAO {
     public List<FitnessGoal> getFitnessGoalsByMember(Member member) {
         try (Session session = sessionFactory.openSession()) {
             Query<FitnessGoal> query = session.createQuery(
-                    "FROM FitnessGoal  WHERE Member = :member",
+                    "FROM FitnessGoal WHERE member = :member",
                     FitnessGoal.class
             );
             query.setParameter("member", member);
