@@ -321,6 +321,15 @@ public class TrainerDashboard extends JFrame {
     }
 
     // ==================== SET AVAILABILITY PANEL ====================
+    /**
+     * Creates the Set Availability panel where trainers can:
+     * - Set availability for a date range (start date to end date)
+     * - Set time slots (start time to end time) that apply to all days in range
+     * - Create multiple availability slots at once for consecutive days
+     * - Automatically skip dates with overlapping availability
+     * 
+     * @return JPanel containing availability management interface
+     */
     private JPanel createAvailabilityPanel() {
         JPanel panel = new JPanel(new BorderLayout(20, 20));
         panel.setOpaque(false);
@@ -336,8 +345,12 @@ public class TrainerDashboard extends JFrame {
         JPanel formCard = createCard("Add Availability Slot");
         formCard.setLayout(new BoxLayout(formCard, BoxLayout.Y_AXIS));
 
-        JTextField dateField = new JTextField("YYYY-MM-DD");
-        dateField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+        // Start date and end date fields for date range
+        JTextField startDateField = new JTextField("YYYY-MM-DD");
+        startDateField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+
+        JTextField endDateField = new JTextField("YYYY-MM-DD");
+        endDateField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
 
         JTextField startField = new JTextField("HH:MM (e.g., 09:00)");
         startField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
@@ -348,21 +361,30 @@ public class TrainerDashboard extends JFrame {
         String[] statuses = {"Available", "Unavailable"};
         JComboBox<String> statusCombo = new JComboBox<>(statuses);
         statusCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+        statusCombo.setSelectedItem("Available"); // Default to Available
 
         JButton saveBtn = new JButton("Save Availability");
         saveBtn.setBackground(ACCENT_COLOR);
         saveBtn.setForeground(Color.WHITE);
         saveBtn.setFocusPainted(false);
 
-        formCard.add(createFormLabel("Date"));
-        formCard.add(dateField);
-        formCard.add(Box.createVerticalStrut(15));
-        formCard.add(createFormLabel("Start Time"));
+        formCard.add(createFormLabel("Start Date (YYYY-MM-DD)"));
+        formCard.add(startDateField);
+        formCard.add(Box.createVerticalStrut(10));
+        formCard.add(createFormLabel("End Date (YYYY-MM-DD)"));
+        formCard.add(endDateField);
+        formCard.add(Box.createVerticalStrut(10));
+        JLabel dateHint = new JLabel("(Leave end date same as start for single day)");
+        dateHint.setFont(new Font("Inter", Font.PLAIN, 11));
+        dateHint.setForeground(Color.GRAY);
+        formCard.add(dateHint);
+        formCard.add(Box.createVerticalStrut(10));
+        formCard.add(createFormLabel("Start Time (HH:MM)"));
         formCard.add(startField);
-        formCard.add(Box.createVerticalStrut(15));
-        formCard.add(createFormLabel("End Time"));
+        formCard.add(Box.createVerticalStrut(10));
+        formCard.add(createFormLabel("End Time (HH:MM)"));
         formCard.add(endField);
-        formCard.add(Box.createVerticalStrut(15));
+        formCard.add(Box.createVerticalStrut(10));
         formCard.add(createFormLabel("Status"));
         formCard.add(statusCombo);
         formCard.add(Box.createVerticalStrut(20));
@@ -370,56 +392,98 @@ public class TrainerDashboard extends JFrame {
 
         saveBtn.addActionListener(e -> {
             try {
-                LocalDate date = LocalDate.parse(dateField.getText().trim());
+                // Parse start and end dates
+                LocalDate startDate = LocalDate.parse(startDateField.getText().trim());
+                LocalDate endDate = LocalDate.parse(endDateField.getText().trim());
                 LocalTime startTime = LocalTime.parse(startField.getText().trim());
                 LocalTime endTime = LocalTime.parse(endField.getText().trim());
                 String status = (String) statusCombo.getSelectedItem();
+
+                // Validation
+                if (endDate.isBefore(startDate)) {
+                    JOptionPane.showMessageDialog(this, "End date must be on or after start date.");
+                    return;
+                }
 
                 if (endTime.isBefore(startTime) || endTime.equals(startTime)) {
                     JOptionPane.showMessageDialog(this, "End time must be after start time.");
                     return;
                 }
 
-                try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-                    // Check for overlapping availability
-                    Query<Availability> overlapQuery = session.createQuery(
-                            "FROM Availability WHERE trainer = :trainer AND date = :date " +
-                                    "AND startTime < :end AND endTime > :start",
-                            Availability.class
-                    );
-                    overlapQuery.setParameter("trainer", trainer);
-                    overlapQuery.setParameter("date", date);
-                    overlapQuery.setParameter("start", startTime);
-                    overlapQuery.setParameter("end", endTime);
+                // Calculate number of days
+                long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
+                if (daysBetween > 365) {
+                    JOptionPane.showMessageDialog(this, "Date range cannot exceed 365 days.");
+                    return;
+                }
 
-                    if (!overlapQuery.getResultList().isEmpty()) {
-                        JOptionPane.showMessageDialog(this, "This time slot overlaps with existing availability!");
-                        return;
+                try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+                    session.beginTransaction();
+                    
+                    int createdCount = 0;
+                    int skippedCount = 0;
+                    LocalDate currentDate = startDate;
+
+                    // Create availability for each day in the range
+                    while (!currentDate.isAfter(endDate)) {
+                        // Check for overlapping availability on this date
+                        Query<Availability> overlapQuery = session.createQuery(
+                                "FROM Availability WHERE trainer = :trainer AND date = :date " +
+                                        "AND startTime < :end AND endTime > :start",
+                                Availability.class
+                        );
+                        overlapQuery.setParameter("trainer", trainer);
+                        overlapQuery.setParameter("date", currentDate);
+                        overlapQuery.setParameter("start", startTime);
+                        overlapQuery.setParameter("end", endTime);
+
+                        if (overlapQuery.getResultList().isEmpty()) {
+                            // No overlap, create availability slot
+                            Availability availability = new Availability();
+                            availability.setTrainer(trainer);
+                            availability.setDate(currentDate);
+                            availability.setStartTime(startTime);
+                            availability.setEndTime(endTime);
+                            availability.setStatus(status);
+
+                            session.persist(availability);
+                            createdCount++;
+                        } else {
+                            // Overlap detected, skip this date
+                            skippedCount++;
+                        }
+
+                        // Move to next day
+                        currentDate = currentDate.plusDays(1);
                     }
 
-                    session.beginTransaction();
-
-                    Availability availability = new Availability();
-                    availability.setTrainer(trainer);
-                    availability.setDate(date);
-                    availability.setStartTime(startTime);
-                    availability.setEndTime(endTime);
-                    availability.setStatus(status);
-
-                    session.persist(availability);
                     session.getTransaction().commit();
 
-                    JOptionPane.showMessageDialog(this, "Availability saved successfully!");
-                    dateField.setText("YYYY-MM-DD");
+                    // Show summary message
+                    String message = "Availability saved successfully!\n\n" +
+                            "Created: " + createdCount + " slot(s)\n";
+                    if (skippedCount > 0) {
+                        message += "Skipped: " + skippedCount + " slot(s) (overlaps detected)";
+                    }
+                    JOptionPane.showMessageDialog(this, message);
+
+                    // Clear form
+                    startDateField.setText("YYYY-MM-DD");
+                    endDateField.setText("YYYY-MM-DD");
                     startField.setText("HH:MM (e.g., 09:00)");
                     endField.setText("HH:MM (e.g., 17:00)");
+                    statusCombo.setSelectedItem("Available");
 
                     switchPanel("Set Availability", selectedNavButton);
                 }
             } catch (DateTimeParseException ex) {
-                JOptionPane.showMessageDialog(this, "Invalid date/time format. Use YYYY-MM-DD for date and HH:MM for time.");
+                JOptionPane.showMessageDialog(this, 
+                    "Invalid date/time format.\n" +
+                    "Dates: YYYY-MM-DD format\n" +
+                    "Times: HH:MM format (e.g., 09:00)");
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error saving availability: " + ex.getMessage());
+                ex.printStackTrace();
             }
         });
 
