@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+
 import healthClubManagement.db.Member;
 import healthClubManagement.db.Trainer;
 import healthClubManagement.db.Admin;
@@ -17,15 +18,38 @@ import java.time.Period;
 import java.time.ZoneId;
 import java.util.Date;
 
+/**
+ * RegisterFrame - Registration interface for new users
+ * 
+ * This class provides a registration form for:
+ * - Members
+ * - Trainers (with speciality selection)
+ * - Admins
+ * 
+ * Features:
+ * - Role-based registration
+ * - Form validation
+ * - Database persistence using Hibernate
+ * 
+ * @author Health Club Management System
+ */
 public class RegisterFrame extends JFrame {
 
+    // Currently selected user role (default: Member)
     private String selectedRole = "Member";
 
-    // Speciality components (ADDED)
+    // Speciality components for Trainer registration
     private JPanel specialityGroup;
     private JComboBox<String> specialityCombo;
 
-    // Small helper: label + single field stacked vertically
+    /**
+     * Helper method to create a form group with label and field
+     * Creates a vertically stacked layout with label on top and field below
+     * 
+     * @param label The label text
+     * @param field The input component
+     * @return JPanel containing the label and field
+     */
     private JPanel singleFieldGroup(String label, JComponent field) {
         JPanel group = new JPanel();
         group.setOpaque(false);
@@ -45,14 +69,19 @@ public class RegisterFrame extends JFrame {
         return group;
     }
 
+    /**
+     * Constructor - Initializes the registration frame
+     * Sets up the UI with left branding panel and right registration form
+     */
     public RegisterFrame() {
+        // Configure main window properties
         setTitle("FitZone Club – Create Account");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1100, 850);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        /* ---------- LEFT GRADIENT PANEL ---------- */
+        /* ---------- LEFT GRADIENT PANEL - Branding Section ---------- */
         JPanel leftPanel = new GradientPanel();
         leftPanel.setPreferredSize(new Dimension(520, 700));
         leftPanel.setLayout(new GridBagLayout());
@@ -107,16 +136,18 @@ public class RegisterFrame extends JFrame {
         card.add(desc);
         card.add(Box.createVerticalStrut(25));
 
-        /* ---------- ROLE SELECTOR ---------- */
+        /* ---------- ROLE SELECTOR - Member/Trainer/Admin ---------- */
         JPanel rolePanel = new JPanel(new GridLayout(1, 3, 12, 0));
         rolePanel.setOpaque(false);
         rolePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        // Create role selection buttons
         JButton member = createRoleButton("Member");
         JButton trainer = createRoleButton("Trainer");
         JButton admin = createRoleButton("Admin");
 
-        highlightRole(member); // default selected
+        // Set Member as default selected role
+        highlightRole(member);
 
         rolePanel.add(member);
         rolePanel.add(trainer);
@@ -177,7 +208,6 @@ public class RegisterFrame extends JFrame {
         card.add(rowDobGender);
         card.add(Box.createVerticalStrut(20));
 
-
         /* ---------- SPECIALITY FIELD (ONLY FOR TRAINERS) ---------- */
         String[] specialities = {
                 "Select Speciality",
@@ -200,7 +230,6 @@ public class RegisterFrame extends JFrame {
 
         card.add(specialityGroup);
         card.add(Box.createVerticalStrut(20));
-
 
         /* ---------- PASSWORD ---------- */
         RoundedInputField pass = new RoundedInputField(
@@ -247,37 +276,86 @@ public class RegisterFrame extends JFrame {
         createBtn.setFocusPainted(false);
         createBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        // Create Account button action handler
         createBtn.addActionListener(e -> {
 
             System.out.println("Button clicked!");
 
-            // VALIDATION -------------------------------
-            if (first.getText().trim().isEmpty()) { error("First name is required."); return; }
-            if (last.getText().trim().isEmpty()) { error("Last name is required."); return; }
-
-            String emailVal = email.getText().trim();
-            if (!emailVal.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) { error("Invalid email."); return; }
-
-            String phoneVal = phone.getText().replaceAll("\\D", "");
-            if (!phoneVal.matches("^\\d{10,15}$")) { error("Phone must be 10–15 digits."); return; }
-
-            Date dobDate = dobChooser.getDate();
-            if (dobDate == null) { error("Select DOB."); return; }
-
-            LocalDate birth = dobDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            if (Period.between(birth, LocalDate.now()).getYears() < 16) {
-                error("Must be 16+."); return;
+            // ========== FORM VALIDATION (ALL FIELDS COMPULSORY) ==========
+            // Validate all required fields before proceeding with registration
+            if (first.getText().trim().isEmpty()) {
+                error("First name is required.");
+                return;
             }
 
-            if (genderCombo.getSelectedIndex() == 0) { error("Select gender."); return; }
+            if (last.getText().trim().isEmpty()) {
+                error("Last name is required.");
+                return;
+            }
+
+            String emailVal = email.getText().trim();
+            if (emailVal.isEmpty()) {
+                error("Email is required.");
+                return;
+            }
+            if (!emailVal.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+                error("Invalid email format.");
+                return;
+            }
+
+            String phoneVal = phone.getText().replaceAll("\\D", "");
+            if (phoneVal.isEmpty()) {
+                error("Phone number is required.");
+                return;
+            }
+            if (!phoneVal.matches("^\\d{10,15}$")) {
+                error("Phone must be 10–15 digits.");
+                return;
+            }
+
+            Date dobDate = dobChooser.getDate();
+            if (dobDate == null) {
+                error("Please select your date of birth.");
+                return;
+            }
+
+            LocalDate birth = dobDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            int age = Period.between(birth, LocalDate.now()).getYears();
+            if (age < 16) {
+                error("You must be at least 16 years old to register.");
+                return;
+            }
+
+            if (genderCombo.getSelectedIndex() == 0) {
+                error("Please select your gender.");
+                return;
+            }
 
             String p1 = pass.getText().trim();
             String p2 = confirm.getText().trim();
-            if (!p1.equals(p2)) { error("Passwords do not match."); return; }
 
-            if (!terms.isSelected()) { error("Please accept Terms."); return; }
+            if (p1.isEmpty()) {
+                error("Password is required.");
+                return;
+            }
 
-            // SPECIALITY CHECK
+            if (p2.isEmpty()) {
+                error("Please confirm your password.");
+                return;
+            }
+
+            if (!p1.equals(p2)) {
+                error("Passwords do not match.");
+                return;
+            }
+
+            if (!terms.isSelected()) {
+                error("You must accept the Terms of Service and Privacy Policy.");
+                return;
+            }
+
+            // SPECIALITY CHECK (Trainer only)
+            // Trainers must select a speciality
             if (selectedRole.equals("Trainer")) {
                 if (specialityCombo.getSelectedIndex() == 0) {
                     error("Please select trainer speciality.");
@@ -285,43 +363,52 @@ public class RegisterFrame extends JFrame {
                 }
             }
 
-            // SAVE -------------------------------
+            // ========== SAVE TO DATABASE (HIBERNATE) ==========
+            // Create and persist the appropriate entity based on selected role
             try (Session session = HibernateUtil.getSessionFactory().openSession()) {
                 session.beginTransaction();
 
+                // Create Member entity
                 if (selectedRole.equals("Member")) {
                     Member m = new Member();
-                    m.setFirstName(first.getText());
-                    m.setLastName(last.getText());
+                    m.setFirstName(first.getText().trim());
+                    m.setLastName(last.getText().trim());
                     m.setEmail(emailVal);
-                    m.setDateOfBirth(java.sql.Date.valueOf(birth).toLocalDate());
+                    m.setDateOfBirth(birth); // LocalDate
                     m.setGender(genderCombo.getSelectedItem().toString());
                     m.setPhoneNumber(phoneVal);
                     m.setPassword(p1);
                     session.persist(m);
                 }
 
+                // Create Trainer entity
                 if (selectedRole.equals("Trainer")) {
                     Trainer t = new Trainer();
-                    t.setFirstName(first.getText());
-                    t.setLastName(last.getText());
+                    t.setFirstName(first.getText().trim());
+                    t.setLastName(last.getText().trim());
                     t.setEmail(emailVal);
-                    t.setSpecialization(specialityCombo.getSelectedItem().toString()); // UPDATED
+                    t.setSpecialization(specialityCombo.getSelectedItem().toString());
                     t.setPassword(p1);
                     session.persist(t);
                 }
 
+                // Create Admin entity
                 if (selectedRole.equals("Admin")) {
                     Admin a = new Admin();
-                    a.setFirstName(first.getText());
-                    a.setLastName(last.getText());
+                    a.setFirstName(first.getText().trim());
+                    a.setLastName(last.getText().trim());
                     a.setEmail(emailVal);
                     a.setRole("Admin");
                     a.setPassword(p1);
                     session.persist(a);
                 }
 
+                // Commit transaction to save to database
                 session.getTransaction().commit();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                error("Error while creating account: " + ex.getMessage());
+                return;
             }
 
             JOptionPane.showMessageDialog(
@@ -333,7 +420,6 @@ public class RegisterFrame extends JFrame {
 
             dispose();
             new LoginFrame().setVisible(true);
-
         });
 
         card.add(createBtn);
@@ -366,6 +452,13 @@ public class RegisterFrame extends JFrame {
     }
 
     /* ---------- FORM GROUP HELPER ---------- */
+    /**
+     * Creates a form group with label and field
+     * 
+     * @param label The label text
+     * @param field The input component
+     * @return JPanel containing the form group
+     */
     private JPanel formGroup(String label, JComponent field) {
         JPanel group = new JPanel();
         group.setOpaque(false);
@@ -386,6 +479,12 @@ public class RegisterFrame extends JFrame {
     }
 
     /* ---------- ROLE BUTTON HELPERS ---------- */
+    /**
+     * Creates a role selection button
+     * 
+     * @param role The role name (Member, Trainer, or Admin)
+     * @return Styled JButton for role selection
+     */
     private JButton createRoleButton(String role) {
         JButton btn = new JButton(role);
         btn.setFocusPainted(false);
@@ -400,29 +499,45 @@ public class RegisterFrame extends JFrame {
             for (Component c : parent.getComponents()) resetRole((JButton) c);
             highlightRole(btn);
 
-            // SHOW SPECIALITY ONLY FOR TRAINER
+            // Show/hide speciality field based on selected role
+            // Speciality field is only visible for Trainers
             if (role.equals("Trainer")) {
                 specialityGroup.setVisible(true);
             } else {
                 specialityGroup.setVisible(false);
-                specialityCombo.setSelectedIndex(0);
+                specialityCombo.setSelectedIndex(0); // Reset selection
             }
         });
 
         return btn;
     }
 
+    /**
+     * Highlights a role button to indicate it's selected
+     * 
+     * @param btn The button to highlight
+     */
     private void highlightRole(JButton btn) {
         btn.setBackground(Color.WHITE);
         btn.setBorder(BorderFactory.createLineBorder(new Color(233, 69, 96)));
     }
 
+    /**
+     * Resets a role button to its default unselected state
+     * 
+     * @param btn The button to reset
+     */
     private void resetRole(JButton btn) {
         btn.setBackground(new Color(245, 245, 245));
         btn.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220)));
     }
 
     /* ---------- ERROR DIALOG ---------- */
+    /**
+     * Displays an error message dialog
+     * 
+     * @param msg The error message to display
+     */
     private void error(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Validation Error", JOptionPane.ERROR_MESSAGE);
     }
