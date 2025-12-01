@@ -10,32 +10,54 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
+/**
+ * MemberDashboard - Main dashboard interface for members
+ * 
+ * This class provides a comprehensive dashboard for members to:
+ * - View and log health metrics (with unit labels)
+ * - Set and track fitness goals
+ * - Book and view PT sessions (with trainer availability display)
+ * - Register for group classes
+ * - Manage their profile
+ * 
+ * @author Health Club Management System
+ */
 public class MemberDashboard extends JFrame {
 
+    // Current logged-in member instance
     private final Member member;
-    private JPanel contentPanel;
-    private CardLayout cardLayout;
-    private JButton selectedNavButton;
+    
+    // UI Components for panel management
+    private JPanel contentPanel;          // Main content panel using CardLayout
+    private CardLayout cardLayout;         // Layout manager for switching between panels
+    private JButton selectedNavButton;     // Currently selected navigation button
 
-    // Colors
-    private static final Color SIDEBAR_BG = new Color(0x0F1C3F);
-    private static final Color ACCENT_COLOR = new Color(0xE94560);
-    private static final Color BG_COLOR = new Color(245, 246, 250);
+    // UI Color Constants
+    private static final Color SIDEBAR_BG = new Color(0x0F1C3F);    // Dark blue sidebar background
+    private static final Color ACCENT_COLOR = new Color(0xE94560);  // Pink/red accent color
+    private static final Color BG_COLOR = new Color(245, 246, 250); // Light gray background
 
+    /**
+     * Constructor - Initializes the Member Dashboard
+     * 
+     * @param member The member object representing the logged-in user
+     */
     public MemberDashboard(Member member) {
         this.member = member;
 
+        // Configure main window properties
         setTitle("FitZone Club – Member Dashboard");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1200, 750);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // ========== 1. SIDEBAR ==========
+        // ========== 1. SIDEBAR - Navigation Panel ==========
         JPanel sidebar = new JPanel();
         sidebar.setBackground(SIDEBAR_BG);
         sidebar.setPreferredSize(new Dimension(220, 0));
@@ -135,13 +157,22 @@ public class MemberDashboard extends JFrame {
         profileBtn.addActionListener(e -> switchPanel("My Profile", profileBtn));
     }
 
+    /**
+     * Switches between different dashboard panels
+     * 
+     * @param panelName The name of the panel to display
+     * @param btn The navigation button that was clicked
+     */
     private void switchPanel(String panelName, JButton btn) {
+        // Show the selected panel
         cardLayout.show(contentPanel, panelName);
+        
+        // Update navigation button highlighting
         resetNavButton(selectedNavButton);
         highlightNavButton(btn);
         selectedNavButton = btn;
 
-        // Refresh the panel when switching
+        // Refresh the panel when switching to ensure data is up-to-date
         contentPanel.remove(contentPanel.getComponent(getComponentIndex(panelName)));
         switch (panelName) {
             case "Dashboard" -> contentPanel.add(createDashboardPanel(), "Dashboard", 0);
@@ -154,6 +185,12 @@ public class MemberDashboard extends JFrame {
         cardLayout.show(contentPanel, panelName);
     }
 
+    /**
+     * Maps panel names to their component indices in the CardLayout
+     * 
+     * @param name The panel name
+     * @return The component index
+     */
     private int getComponentIndex(String name) {
         return switch (name) {
             case "Dashboard" -> 0;
@@ -167,18 +204,31 @@ public class MemberDashboard extends JFrame {
     }
 
     // ==================== DASHBOARD PANEL ====================
+    /**
+     * Creates the main dashboard panel showing overview statistics and quick actions
+     * 
+     * Displays:
+     * - Latest health metric with unit
+     * - Active fitness goals count
+     * - Upcoming PT sessions count
+     * - Registered classes count
+     * - Today's schedule
+     * - Quick action buttons
+     * 
+     * @return JPanel containing the dashboard overview
+     */
     private JPanel createDashboardPanel() {
         JPanel panel = new JPanel(new BorderLayout(20, 20));
         panel.setOpaque(false);
 
-        // Fetch real data
+        // Fetch real-time data from database for dashboard statistics
         HealthMetric latestMetric = null;
         List<FitnessGoal> goals = null;
         List<PTSession> upcomingSessions = null;
         List<MemberClass> registeredClasses = null;
 
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            // Latest health metric
+            // Get the most recent health metric
             Query<HealthMetric> metricQuery = session.createQuery(
                     "FROM HealthMetric WHERE member = :member ORDER BY timestamp DESC",
                     HealthMetric.class
@@ -187,7 +237,7 @@ public class MemberDashboard extends JFrame {
             metricQuery.setMaxResults(1);
             latestMetric = metricQuery.uniqueResult();
 
-            // Fitness goals
+            // Get all active fitness goals
             Query<FitnessGoal> goalQuery = session.createQuery(
                     "FROM FitnessGoal WHERE member = :member",
                     FitnessGoal.class
@@ -195,7 +245,7 @@ public class MemberDashboard extends JFrame {
             goalQuery.setParameter("member", member);
             goals = goalQuery.getResultList();
 
-            // Upcoming PT sessions
+            // Get upcoming PT sessions (future sessions only)
             Query<PTSession> sessionQuery = session.createQuery(
                     "FROM PTSession WHERE member = :member AND startTime > :now ORDER BY startTime ASC",
                     PTSession.class
@@ -204,7 +254,7 @@ public class MemberDashboard extends JFrame {
             sessionQuery.setParameter("now", LocalDateTime.now());
             upcomingSessions = sessionQuery.getResultList();
 
-            // Registered classes
+            // Get all registered classes
             Query<MemberClass> classQuery = session.createQuery(
                     "FROM MemberClass WHERE member = :member",
                     MemberClass.class
@@ -215,11 +265,19 @@ public class MemberDashboard extends JFrame {
             e.printStackTrace();
         }
 
-        // Stats row
+        // Create statistics cards row
         JPanel statsRow = new JPanel(new GridLayout(1, 4, 15, 0));
         statsRow.setOpaque(false);
 
-        statsRow.add(statCard("Latest Metric", latestMetric != null ? latestMetric.getMetricType() + ": " + latestMetric.getValue() : "No data",
+        // Format latest metric with unit for display
+        String latestMetricDisplay = "No data";
+        if (latestMetric != null) {
+            String unit = getUnitForMetricType(latestMetric.getMetricType());
+            latestMetricDisplay = latestMetric.getMetricType() + ": " + latestMetric.getValue() + " " + unit;
+        }
+        
+        // Add statistic cards to the row
+        statsRow.add(statCard("Latest Metric", latestMetricDisplay,
                 latestMetric != null ? latestMetric.getTimestamp().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) : ""));
         statsRow.add(statCard("Active Goals", goals != null ? String.valueOf(goals.size()) : "0", "Track your progress"));
         statsRow.add(statCard("Upcoming Sessions", upcomingSessions != null ? String.valueOf(upcomingSessions.size()) : "0", "PT sessions booked"));
@@ -292,6 +350,16 @@ public class MemberDashboard extends JFrame {
     }
 
     // ==================== HEALTH METRICS PANEL ====================
+    /**
+     * Creates the Health Metrics panel where members can log and view their health data
+     * 
+     * Features:
+     * - Dynamic unit labels that change based on selected metric type
+     * - Form to log new health metrics
+     * - History table showing all past metrics with units
+     * 
+     * @return JPanel containing the health metrics interface
+     */
     private JPanel createHealthMetricsPanel() {
         JPanel panel = new JPanel(new BorderLayout(20, 20));
         panel.setOpaque(false);
@@ -308,12 +376,56 @@ public class MemberDashboard extends JFrame {
         JPanel formCard = createCard("Log New Metric");
         formCard.setLayout(new BoxLayout(formCard, BoxLayout.Y_AXIS));
 
+        // Available metric types for selection
         String[] metricTypes = {"Weight", "Heart Rate", "Blood Pressure", "Body Fat %", "Steps"};
         JComboBox<String> typeCombo = new JComboBox<>(metricTypes);
         typeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
 
+        // Input field for metric value
         JTextField valueField = new JTextField();
         valueField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+
+        // Unit label that dynamically changes based on selected metric type
+        // Default to "kg" for Weight
+        JLabel unitLabel = new JLabel("kg");
+        unitLabel.setFont(new Font("Inter", Font.PLAIN, 12));
+        unitLabel.setForeground(Color.GRAY);
+        unitLabel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 10));
+
+        // Panel to hold value field and unit label side by side
+        // This creates a nice visual where the unit appears next to the input field
+        JPanel valuePanel = new JPanel(new BorderLayout(5, 0));
+        valuePanel.setOpaque(false);
+        valuePanel.add(valueField, BorderLayout.CENTER);
+        valuePanel.add(unitLabel, BorderLayout.EAST);
+        valuePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+
+        // Update unit label when metric type changes
+        // This provides immediate visual feedback about what unit is expected
+        typeCombo.addActionListener(e -> {
+            String selectedType = (String) typeCombo.getSelectedItem();
+            if (selectedType != null) {
+                switch (selectedType) {
+                    case "Weight":
+                        unitLabel.setText("kg");  // Kilograms
+                        break;
+                    case "Heart Rate":
+                        unitLabel.setText("bpm"); // Beats per minute
+                        break;
+                    case "Blood Pressure":
+                        unitLabel.setText("mmHg"); // Millimeters of mercury
+                        break;
+                    case "Body Fat %":
+                        unitLabel.setText("%");   // Percentage
+                        break;
+                    case "Steps":
+                        unitLabel.setText("steps"); // Step count
+                        break;
+                    default:
+                        unitLabel.setText("");
+                }
+            }
+        });
 
         JButton saveBtn = new JButton("Save Metric");
         saveBtn.setBackground(ACCENT_COLOR);
@@ -324,16 +436,18 @@ public class MemberDashboard extends JFrame {
         formCard.add(typeCombo);
         formCard.add(Box.createVerticalStrut(15));
         formCard.add(createFormLabel("Value"));
-        formCard.add(valueField);
+        formCard.add(valuePanel);
         formCard.add(Box.createVerticalStrut(20));
         formCard.add(saveBtn);
 
-        // Right: History table
+        // Right: History table showing all past health metrics
         JPanel historyCard = createCard("Health History");
         String[] columns = {"Date", "Type", "Value"};
         DefaultTableModel model = new DefaultTableModel(columns, 0);
 
+        // Load and display health metric history from database
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Query all health metrics for this member, ordered by most recent first
             Query<HealthMetric> query = session.createQuery(
                     "FROM HealthMetric WHERE member = :member ORDER BY timestamp DESC",
                     HealthMetric.class
@@ -341,11 +455,16 @@ public class MemberDashboard extends JFrame {
             query.setParameter("member", member);
             List<HealthMetric> metrics = query.getResultList();
 
+            // Add each metric to the table with appropriate unit label
             for (HealthMetric m : metrics) {
+                // Get the appropriate unit for this metric type
+                String unit = getUnitForMetricType(m.getMetricType());
+                // Format value with unit (e.g., "72 bpm", "80 kg")
+                String valueWithUnit = m.getValue() + " " + unit;
                 model.addRow(new Object[]{
                         m.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
                         m.getMetricType(),
-                        m.getValue()
+                        valueWithUnit
                 });
             }
         } catch (Exception e) {
@@ -356,33 +475,40 @@ public class MemberDashboard extends JFrame {
         table.setRowHeight(30);
         historyCard.add(new JScrollPane(table), BorderLayout.CENTER);
 
-        // Save action
+        // Save action - handles saving new health metrics
         saveBtn.addActionListener(e -> {
             try {
+                // Parse and validate the input value
                 int value = Integer.parseInt(valueField.getText().trim());
                 String type = (String) typeCombo.getSelectedItem();
 
+                // Save to database using Hibernate
                 try (Session session = HibernateUtil.getSessionFactory().openSession()) {
                     session.beginTransaction();
 
+                    // Create new HealthMetric entity
                     HealthMetric metric = new HealthMetric();
                     metric.setMember(member);
                     metric.setMetricType(type);
                     metric.setValue(value);
                     metric.setTimestamp(LocalDateTime.now());
 
+                    // Persist to database
                     session.persist(metric);
                     session.getTransaction().commit();
 
+                    // Show success message and clear form
                     JOptionPane.showMessageDialog(this, "Health metric saved successfully!");
                     valueField.setText("");
 
-                    // Refresh the panel
+                    // Refresh the panel to show the new metric in history
                     switchPanel("Health Metrics", selectedNavButton);
                 }
             } catch (NumberFormatException ex) {
+                // Handle invalid numeric input
                 JOptionPane.showMessageDialog(this, "Please enter a valid numeric value.");
             } catch (Exception ex) {
+                // Handle other errors
                 JOptionPane.showMessageDialog(this, "Error saving metric: " + ex.getMessage());
             }
         });
@@ -395,6 +521,16 @@ public class MemberDashboard extends JFrame {
     }
 
     // ==================== FITNESS GOALS PANEL ====================
+    /**
+     * Creates the Fitness Goals panel where members can set and track their fitness goals
+     * 
+     * Features:
+     * - Set new goals with appropriate unit labels
+     * - View existing goals with units
+     * - Delete goals
+     * 
+     * @return JPanel containing the fitness goals interface
+     */
     private JPanel createFitnessGoalsPanel() {
         JPanel panel = new JPanel(new BorderLayout(20, 20));
         panel.setOpaque(false);
@@ -403,19 +539,59 @@ public class MemberDashboard extends JFrame {
         title.setFont(new Font("Inter", Font.BOLD, 20));
         panel.add(title, BorderLayout.NORTH);
 
+        // Two-column layout: Form on left, Goals list on right
         JPanel content = new JPanel(new GridLayout(1, 2, 20, 0));
         content.setOpaque(false);
 
-        // Left: Add new goal
+        // Left: Add new goal form
         JPanel formCard = createCard("Set New Goal");
         formCard.setLayout(new BoxLayout(formCard, BoxLayout.Y_AXIS));
 
+        // Available goal types
         String[] goalTypes = {"Target Weight", "Body Fat %", "Weekly Workouts", "Daily Steps"};
         JComboBox<String> goalTypeCombo = new JComboBox<>(goalTypes);
         goalTypeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
 
+        // Input field for target value
         JTextField targetField = new JTextField();
         targetField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+
+        // Unit label that dynamically changes based on selected goal type
+        // Default to "kg" for Target Weight
+        JLabel goalUnitLabel = new JLabel("kg");
+        goalUnitLabel.setFont(new Font("Inter", Font.PLAIN, 12));
+        goalUnitLabel.setForeground(Color.GRAY);
+        goalUnitLabel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 10));
+
+        // Panel to hold target field and unit label side by side
+        JPanel targetPanel = new JPanel(new BorderLayout(5, 0));
+        targetPanel.setOpaque(false);
+        targetPanel.add(targetField, BorderLayout.CENTER);
+        targetPanel.add(goalUnitLabel, BorderLayout.EAST);
+        targetPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+
+        // Update unit label when goal type changes
+        goalTypeCombo.addActionListener(e -> {
+            String selectedType = (String) goalTypeCombo.getSelectedItem();
+            if (selectedType != null) {
+                switch (selectedType) {
+                    case "Target Weight":
+                        goalUnitLabel.setText("kg");  // Kilograms
+                        break;
+                    case "Body Fat %":
+                        goalUnitLabel.setText("%");    // Percentage
+                        break;
+                    case "Weekly Workouts":
+                        goalUnitLabel.setText("workouts"); // Number of workouts
+                        break;
+                    case "Daily Steps":
+                        goalUnitLabel.setText("steps"); // Step count
+                        break;
+                    default:
+                        goalUnitLabel.setText("");
+                }
+            }
+        });
 
         JTextField deadlineField = new JTextField("YYYY-MM-DD");
         deadlineField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
@@ -429,7 +605,7 @@ public class MemberDashboard extends JFrame {
         formCard.add(goalTypeCombo);
         formCard.add(Box.createVerticalStrut(15));
         formCard.add(createFormLabel("Target Value"));
-        formCard.add(targetField);
+        formCard.add(targetPanel);
         formCard.add(Box.createVerticalStrut(15));
         formCard.add(createFormLabel("Deadline"));
         formCard.add(deadlineField);
@@ -455,9 +631,11 @@ public class MemberDashboard extends JFrame {
             List<FitnessGoal> goals = query.getResultList();
 
             for (FitnessGoal g : goals) {
+                String unit = getUnitForGoalType(g.getGoalType());
+                String valueWithUnit = g.getValue() + " " + unit;
                 model.addRow(new Object[]{
                         g.getGoalType(),
-                        g.getValue(),
+                        valueWithUnit,
                         g.getDeadline().toString(),
                         "Delete"
                 });
@@ -511,6 +689,19 @@ public class MemberDashboard extends JFrame {
     }
 
     // ==================== PT SESSIONS PANEL ====================
+    /**
+     * Creates the PT Sessions panel where members can:
+     * - View trainer availability in real-time
+     * - Book new PT sessions
+     * - View their booked sessions
+     * 
+     * Features:
+     * - Trainer availability display showing free time slots
+     * - Double-click availability to auto-fill booking form
+     * - Validation to ensure trainer is available before booking
+     * 
+     * @return JPanel containing the PT sessions interface
+     */
     private JPanel createPTSessionsPanel() {
         JPanel panel = new JPanel(new BorderLayout(20, 20));
         panel.setOpaque(false);
@@ -519,7 +710,8 @@ public class MemberDashboard extends JFrame {
         title.setFont(new Font("Inter", Font.BOLD, 20));
         panel.add(title, BorderLayout.NORTH);
 
-        JPanel content = new JPanel(new GridLayout(1, 2, 20, 0));
+        // Three-column layout: Booking form | Availability | My Sessions
+        JPanel content = new JPanel(new GridLayout(1, 3, 20, 0));
         content.setOpaque(false);
 
         // Left: Book new session
@@ -585,6 +777,140 @@ public class MemberDashboard extends JFrame {
         formCard.add(Box.createVerticalStrut(15));
         formCard.add(bookBtn);
 
+        // Middle: Trainer Availability Display
+        // This panel shows available time slots for the selected trainer
+        JPanel availabilityCard = createCard("Trainer Availability");
+        JPanel availabilityContent = new JPanel(new BorderLayout());
+        availabilityContent.setOpaque(false);
+        availabilityContent.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
+        
+        // Hint label to guide users
+        JLabel availabilityHint = new JLabel("Double-click a time slot to fill the booking form");
+        availabilityHint.setFont(new Font("Inter", Font.PLAIN, 11));
+        availabilityHint.setForeground(Color.GRAY);
+        availabilityHint.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+        availabilityContent.add(availabilityHint, BorderLayout.NORTH);
+        
+        // Table to display available time slots
+        String[] availColumns = {"Date", "Time Slot", "Status"};
+        DefaultTableModel availModel = new DefaultTableModel(availColumns, 0);
+        JTable availabilityTable = new JTable(availModel);
+        availabilityTable.setRowHeight(30);
+        availabilityTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JScrollPane availabilityScroll = new JScrollPane(availabilityTable);
+        availabilityContent.add(availabilityScroll, BorderLayout.CENTER);
+        
+        // Add content to the card (createCard already has title in NORTH, so add to CENTER)
+        availabilityCard.add(availabilityContent, BorderLayout.CENTER);
+
+        /**
+         * Method to update availability display
+         * Queries the database for available time slots for the selected trainer
+         * and filters out slots that are already booked
+         */
+        Runnable updateAvailability = () -> {
+            availModel.setRowCount(0);
+            String selectedTrainerDisplay = (String) trainerCombo.getSelectedItem();
+            if (selectedTrainerDisplay == null) {
+                return;
+            }
+
+            Trainer selectedTrainer = trainerMap.get(selectedTrainerDisplay);
+            if (selectedTrainer == null) {
+                return;
+            }
+
+            try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+                // Get available slots for the next 14 days
+                // This provides a reasonable window for booking ahead
+                LocalDate today = LocalDate.now();
+                LocalDate endDate = today.plusDays(14);
+
+                // Query availability table for slots marked as "Available"
+                Query<Availability> query = session.createQuery(
+                        "FROM Availability a " +
+                        "WHERE a.trainer = :trainer " +
+                        "AND a.date >= :startDate " +
+                        "AND a.date <= :endDate " +
+                        "AND a.status = 'Available' " +
+                        "ORDER BY a.date ASC, a.startTime ASC",
+                        Availability.class
+                );
+                query.setParameter("trainer", selectedTrainer);
+                query.setParameter("startDate", today);
+                query.setParameter("endDate", endDate);
+
+                List<Availability> availabilities = query.getResultList();
+
+                // Filter out slots that are already booked
+                // Even if a slot is marked "Available", it might be booked by another member
+                for (Availability avail : availabilities) {
+                    // Convert availability slot to LocalDateTime for comparison
+                    LocalDateTime slotStart = avail.getDate().atTime(avail.getStartTime());
+                    LocalDateTime slotEnd = avail.getDate().atTime(avail.getEndTime());
+                    
+                    // Check if any PT sessions overlap with this availability slot
+                    Query<PTSession> sessionQuery = session.createQuery(
+                            "FROM PTSession s " +
+                            "WHERE s.trainer = :trainer " +
+                            "AND s.startTime < :slotEnd " +
+                            "AND s.endTime > :slotStart",
+                            PTSession.class
+                    );
+                    sessionQuery.setParameter("trainer", selectedTrainer);
+                    sessionQuery.setParameter("slotStart", slotStart);
+                    sessionQuery.setParameter("slotEnd", slotEnd);
+
+                    List<PTSession> conflictingSessions = sessionQuery.getResultList();
+
+                    // Only show slots that have no conflicts (truly available)
+                    if (conflictingSessions.isEmpty()) {
+                        // Format time slot for display (e.g., "09:00 - 17:00")
+                        String timeSlot = avail.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm")) +
+                                        " - " + avail.getEndTime().format(DateTimeFormatter.ofPattern("HH:mm"));
+                        // Add to table
+                        availModel.addRow(new Object[]{
+                                avail.getDate().toString(),
+                                timeSlot,
+                                "Available"
+                        });
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        };
+
+        // Update availability display when trainer selection changes
+        // This ensures the table shows availability for the newly selected trainer
+        trainerCombo.addActionListener(e -> updateAvailability.run());
+
+        // Update availability when date field changes
+        // This allows filtering by specific date if needed
+        dateField.addActionListener(e -> updateAvailability.run());
+
+        // Allow double-clicking on availability table to auto-fill the booking form
+        // This improves user experience by reducing manual data entry
+        availabilityTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                if (evt.getClickCount() == 2) {
+                    int row = availabilityTable.getSelectedRow();
+                    if (row >= 0) {
+                        // Extract date and time slot from selected row
+                        String date = (String) availModel.getValueAt(row, 0);
+                        String timeSlot = (String) availModel.getValueAt(row, 1);
+                        String[] times = timeSlot.split(" - ");
+                        if (times.length == 2) {
+                            // Auto-fill the booking form fields
+                            dateField.setText(date);
+                            startTimeField.setText(times[0]);
+                            endTimeField.setText(times[1]);
+                        }
+                    }
+                }
+            }
+        });
+
         // Right: My sessions
         JPanel sessionsCard = createCard("My PT Sessions");
         String[] columns = {"Date", "Time", "Trainer", "Room", "Status"};
@@ -635,9 +961,39 @@ public class MemberDashboard extends JFrame {
                 LocalDateTime startTime = date.atTime(Integer.parseInt(startParts[0]), Integer.parseInt(startParts[1]));
                 LocalDateTime endTime = date.atTime(Integer.parseInt(endParts[0]), Integer.parseInt(endParts[1]));
 
-                // Validate trainer availability
+                // Validate trainer availability before booking
+                // This ensures members can only book when trainers are actually available
                 try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-                    // Check for trainer conflicts
+                    // Step 1: Check if trainer has an availability slot that covers the requested time
+                    // The slot must be marked as "Available" and must fully contain the requested time
+                    LocalTime requestedStartTime = startTime.toLocalTime();
+                    LocalTime requestedEndTime = endTime.toLocalTime();
+                    
+                    Query<Availability> availabilityQuery = session.createQuery(
+                            "FROM Availability a " +
+                            "WHERE a.trainer = :trainer " +
+                            "AND a.date = :date " +
+                            "AND a.startTime <= :requestedStart " +
+                            "AND a.endTime >= :requestedEnd " +
+                            "AND a.status = 'Available'",
+                            Availability.class
+                    );
+                    availabilityQuery.setParameter("trainer", selectedTrainer);
+                    availabilityQuery.setParameter("date", date);
+                    availabilityQuery.setParameter("requestedStart", requestedStartTime);
+                    availabilityQuery.setParameter("requestedEnd", requestedEndTime);
+                    
+                    List<Availability> availableSlots = availabilityQuery.getResultList();
+                    
+                    // If no availability slot found, reject the booking
+                    if (availableSlots.isEmpty()) {
+                        JOptionPane.showMessageDialog(this, 
+                            "Trainer is not available at this time slot. Please check trainer availability.");
+                        return;
+                    }
+                    
+                    // Step 2: Check for conflicts with existing PT sessions
+                    // Even if availability exists, the slot might already be booked
                     Query<PTSession> conflictQuery = session.createQuery(
                             "FROM PTSession WHERE trainer = :trainer AND startTime < :end AND endTime > :start",
                             PTSession.class
@@ -647,7 +1003,7 @@ public class MemberDashboard extends JFrame {
                     conflictQuery.setParameter("end", endTime);
 
                     if (!conflictQuery.getResultList().isEmpty()) {
-                        JOptionPane.showMessageDialog(this, "Trainer is not available at this time!");
+                        JOptionPane.showMessageDialog(this, "Trainer already has a session booked at this time!");
                         return;
                     }
 
@@ -687,8 +1043,12 @@ public class MemberDashboard extends JFrame {
         });
 
         content.add(formCard);
+        content.add(availabilityCard);
         content.add(sessionsCard);
         panel.add(content, BorderLayout.CENTER);
+
+        // Initial availability update
+        updateAvailability.run();
 
         return panel;
     }
@@ -926,6 +1286,12 @@ public class MemberDashboard extends JFrame {
     }
 
     // ==================== HELPER METHODS ====================
+    /**
+     * Creates a styled navigation button for the sidebar
+     * 
+     * @param text The button text
+     * @return Styled JButton
+     */
     private JButton navButton(String text) {
         JButton btn = new JButton(text);
         btn.setHorizontalAlignment(SwingConstants.LEFT);
@@ -939,6 +1305,11 @@ public class MemberDashboard extends JFrame {
         return btn;
     }
 
+    /**
+     * Highlights a navigation button to indicate it's selected
+     * 
+     * @param btn The button to highlight
+     */
     private void highlightNavButton(JButton btn) {
         if (btn != null) {
             btn.setBackground(new Color(240, 248, 255));
@@ -947,6 +1318,11 @@ public class MemberDashboard extends JFrame {
         }
     }
 
+    /**
+     * Resets a navigation button to its default unselected state
+     * 
+     * @param btn The button to reset
+     */
     private void resetNavButton(JButton btn) {
         if (btn != null) {
             btn.setBackground(SIDEBAR_BG);
@@ -955,6 +1331,14 @@ public class MemberDashboard extends JFrame {
         }
     }
 
+    /**
+     * Creates a statistic card for the dashboard
+     * 
+     * @param title The card title (small text at top)
+     * @param main The main statistic value (large text)
+     * @param subtitle The subtitle/description (small text at bottom)
+     * @return JPanel styled as a statistic card
+     */
     private JPanel statCard(String title, String main, String subtitle) {
         JPanel card = new JPanel();
         card.setBackground(Color.WHITE);
@@ -984,6 +1368,12 @@ public class MemberDashboard extends JFrame {
         return card;
     }
 
+    /**
+     * Creates a styled card panel with a title
+     * 
+     * @param title The card title
+     * @return JPanel styled as a card with title in NORTH position
+     */
     private JPanel createCard(String title) {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(Color.WHITE);
@@ -999,6 +1389,12 @@ public class MemberDashboard extends JFrame {
         return card;
     }
 
+    /**
+     * Creates a styled form label
+     * 
+     * @param text The label text
+     * @return Styled JLabel
+     */
     private JLabel createFormLabel(String text) {
         JLabel label = new JLabel(text);
         label.setFont(new Font("Inter", Font.BOLD, 13));
@@ -1006,11 +1402,51 @@ public class MemberDashboard extends JFrame {
         return label;
     }
 
+    /**
+     * Styles an action button with accent color
+     * 
+     * @param btn The button to style
+     */
     private void styleActionButton(JButton btn) {
         btn.setBackground(ACCENT_COLOR);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+    }
+
+    /**
+     * Helper method to get the appropriate unit label for a health metric type
+     * 
+     * @param metricType The type of health metric (e.g., "Weight", "Heart Rate")
+     * @return The unit string (e.g., "kg", "bpm", "mmHg")
+     */
+    private String getUnitForMetricType(String metricType) {
+        if (metricType == null) return "";
+        return switch (metricType) {
+            case "Weight" -> "kg";              // Kilograms
+            case "Heart Rate" -> "bpm";         // Beats per minute
+            case "Blood Pressure" -> "mmHg";    // Millimeters of mercury
+            case "Body Fat %" -> "%";           // Percentage
+            case "Steps" -> "steps";            // Step count
+            default -> "";
+        };
+    }
+
+    /**
+     * Helper method to get the appropriate unit label for a fitness goal type
+     * 
+     * @param goalType The type of fitness goal (e.g., "Target Weight", "Daily Steps")
+     * @return The unit string (e.g., "kg", "steps", "workouts")
+     */
+    private String getUnitForGoalType(String goalType) {
+        if (goalType == null) return "";
+        return switch (goalType) {
+            case "Target Weight" -> "kg";       // Kilograms
+            case "Body Fat %" -> "%";           // Percentage
+            case "Weekly Workouts" -> "workouts"; // Number of workouts
+            case "Daily Steps" -> "steps";      // Step count
+            default -> "";
+        };
     }
 }
